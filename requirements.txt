@@ -1,0 +1,13 @@
+# Core dependencies
+aiohttp==3.8.4
+web3==6.0.0
+python-dotenv==1.0.0
+eth-account==0.8.0
+
+# Command-line interface
+rich==13.3.5
+prompt_toolkit==3.0.38
+
+# Utilities
+requests==2.31.0
+typing-extensions==4.6.3

@@ -303,8 +303,7 @@ class EchoLinkClient:
             API configuration
         """
         status, response = await self._make_request("GET", "/api/v1/config", auth=False)
-        return response if status == 200 else {"error": response.get("error", "Failed to get 
-API configuration")}
+        return response if status == 200 else {"error": response.get("error", "Failed to get API configuration")}
     
     async def wait_for_transaction(self, tx_hash: str, timeout: int = 300) -> Dict:
         """

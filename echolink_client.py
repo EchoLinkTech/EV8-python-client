@@ -377,8 +377,8 @@ class EchoLinkClient:
         self.conversation_history = []
         logger.info("Conversation history cleared")
 
-class EchoLinkConsole(cmd.Cmd):
-    """Interactive command console for EchoLink API"""
+class AsyncEchoLinkConsole(cmd.Cmd):
+    """Interactive command console for EchoLink API with asyncio support"""
     
     intro = """
     Welcome to the EchoLink API Client Console
@@ -394,9 +394,9 @@ class EchoLinkConsole(cmd.Cmd):
         self.client = None
         self.base_url = base_url
         self.private_key = private_key
-        self.loop = asyncio.get_event_loop()
-    
-    async def initialize_client(self):
+        self.stopped = False
+        
+    async def setup(self):
         """Initialize the API client"""
         self.client = EchoLinkClient(self.base_url, self.private_key)
         await self.client.__aenter__()
@@ -414,14 +414,67 @@ class EchoLinkConsole(cmd.Cmd):
             console.print(f"[bold]Block:[/bold] {block}")
             console.print(f"[bold]AI Provider:[/bold] {provider}")
     
-    def do_health(self, arg):
+    async def async_cmdloop(self):
+        """Async version of cmdloop that properly integrates with asyncio"""
+        self.preloop()
+        try:
+            if self.intro:
+                console.print(self.intro)
+            while not self.stopped:
+                try:
+                    # Get input in a way that doesn't block the event loop
+                    line = await asyncio.get_event_loop().run_in_executor(None, lambda: input(self.prompt))
+                    await self.async_onecmd(line)
+                except EOFError:
+                    self.stopped = True
+                    break
+        finally:
+            self.postloop()
+            # Clean up client
+            if self.client:
+                await self.client.__aexit__(None, None, None)
+    
+    async def async_onecmd(self, line):
+        """Async version of onecmd"""
+        cmd, arg, line = self.parseline(line)
+        if not line:
+            return
+        if cmd is None:
+            return await self.async_default(line)
+        if cmd == '':
+            return await self.async_default(line)
+        
+        try:
+            # First, try to find the async version of the command
+            func = getattr(self, f'async_do_{cmd}', None)
+            if func:
+                return await func(arg)
+            
+            # Fall back to sync version for simple commands
+            func = getattr(self, f'do_{cmd}', None)
+            if func:
+                return func(arg)
+            
+            return await self.async_default(line)
+        except Exception as e:
+            console.print(f"[red]Error: {str(e)}[/red]")
+    
+    async def async_default(self, line):
+        """Default async command handler"""
+        if line.strip() == 'EOF':
+            self.stopped = True
+            return
+        console.print(f"[yellow]Unknown command: {line}[/yellow]")
+        console.print("Type 'help' for a list of commands.")
+    
+    async def async_do_health(self, arg):
         """Check API health status"""
-        result = self.loop.run_until_complete(self.client.get_health())
+        result = await self.client.get_health()
         self._print_result(result)
     
-    def do_balance(self, arg):
+    async def async_do_balance(self, arg):
         """Check ETH and EKO balance"""
-        result = self.loop.run_until_complete(self.client.get_balance())
+        result = await self.client.get_balance()
         
         if "error" in result:
             console.print(f"[red]Error: {result['error']}[/red]")
@@ -444,7 +497,7 @@ class EchoLinkConsole(cmd.Cmd):
             
             console.print(table)
     
-    def do_create_agent(self, arg):
+    async def async_do_create_agent(self, arg):
         """Create a new AI agent"""
         if not arg:
             console.print("[yellow]Usage: create_agent <agent_name>[/yellow]")
@@ -456,8 +509,9 @@ class EchoLinkConsole(cmd.Cmd):
         
         lines = []
         try:
+            # Get multiline input in a way that works with asyncio
             while True:
-                line = input()
+                line = await asyncio.get_event_loop().run_in_executor(None, input)
                 lines.append(line)
         except EOFError:
             pass
@@ -465,18 +519,17 @@ class EchoLinkConsole(cmd.Cmd):
         purpose = "\n".join(lines)
         console.print(f"[yellow]Creating agent: {name}[/yellow]")
         
-        result = self.loop.run_until_complete(
-            self.client.create_agent_and_wait(name, purpose)
-        )
+        # Create agent and wait for confirmation
+        result = await self.client.create_agent_and_wait(name, purpose)
         self._print_result(result)
     
-    def do_chat(self, arg):
+    async def async_do_chat(self, arg):
         """Send a message to the AI agent"""
         if not arg:
             console.print("[yellow]Usage: chat <message>[/yellow]")
             return
         
-        result = self.loop.run_until_complete(self.client.send_message(arg))
+        result = await self.client.send_message(arg)
         
         if "error" in result:
             console.print(f"[red]Error: {result['error']}[/red]")
@@ -490,23 +543,21 @@ class EchoLinkConsole(cmd.Cmd):
             
             # Print metadata
             if metadata:
-                console.print("[dim]Response time:[/dim]", metadata.get("response_time", 
-"unknown"))
-                console.print("[dim]Tokens used:[/dim]", metadata.get("tokens_used", 
-"unknown"))
+                console.print("[dim]Response time:[/dim]", metadata.get("response_time", "unknown"))
+                console.print("[dim]Tokens used:[/dim]", metadata.get("tokens_used", "unknown"))
     
-    def do_interactive(self, arg):
+    async def async_do_interactive(self, arg):
         """Start interactive chat session with the AI agent"""
         console.print("[bold]Starting interactive chat session[/bold]")
         console.print("[dim]Type 'exit' or press Ctrl+D to end the session[/dim]")
         
         while True:
             try:
-                msg = input("\nYou: ")
+                msg = await asyncio.get_event_loop().run_in_executor(None, lambda: input("\nYou: "))
                 if msg.lower() in ('exit', 'quit'):
                     break
                 
-                result = self.loop.run_until_complete(self.client.send_message(msg))
+                result = await self.client.send_message(msg)
                 
                 if "error" in result:
                     console.print(f"\n[red]Error: {result['error']}[/red]")
@@ -520,30 +571,30 @@ class EchoLinkConsole(cmd.Cmd):
         
         console.print("[yellow]Ending chat session[/yellow]")
     
-    def do_check_tx(self, arg):
+    async def async_do_check_tx(self, arg):
         """Check status of a transaction"""
         if not arg:
             console.print("[yellow]Usage: check_tx <tx_hash>[/yellow]")
             return
         
-        result = self.loop.run_until_complete(self.client.check_transaction(arg))
+        result = await self.client.check_transaction(arg)
         self._print_result(result)
     
-    def do_check_agent(self, arg):
+    async def async_do_check_agent(self, arg):
         """Check status of an AI agent"""
         if not arg:
             console.print("[yellow]Usage: check_agent <agent_address>[/yellow]")
             return
         
-        result = self.loop.run_until_complete(self.client.check_agent_status(arg))
+        result = await self.client.check_agent_status(arg)
         self._print_result(result)
     
-    def do_config(self, arg):
+    async def async_do_config(self, arg):
         """Get API configuration"""
-        result = self.loop.run_until_complete(self.client.get_config())
+        result = await self.client.get_config()
         self._print_result(result)
     
-    def do_history(self, arg):
+    async def async_do_history(self, arg):
         """Show conversation history"""
         history = self.client.get_conversation_history()
         
@@ -557,19 +608,31 @@ class EchoLinkConsole(cmd.Cmd):
             console.print(f"[bold green]Agent:[/bold green] {item['agent']}")
             console.print(f"[dim]Time: {item['timestamp']}[/dim]")
     
-    def do_clear_history(self, arg):
+    async def async_do_clear_history(self, arg):
         """Clear conversation history"""
         self.client.clear_conversation_history()
         console.print("[green]Conversation history cleared[/green]")
     
-    def do_exit(self, arg):
+    async def async_do_exit(self, arg):
         """Exit the console"""
         console.print("[yellow]Exiting EchoLink console...[/yellow]")
+        self.stopped = True
         return True
     
-    def do_quit(self, arg):
+    async def async_do_quit(self, arg):
         """Exit the console"""
-        return self.do_exit(arg)
+        return await self.async_do_exit(arg)
+    
+    # Compatibility methods for cmd.Cmd
+    def do_exit(self, arg):
+        """Exit compatibility method"""
+        self.stopped = True
+        return True
+        
+    def do_quit(self, arg):
+        """Quit compatibility method"""
+        self.stopped = True
+        return True
     
     def _print_result(self, result):
         """Print result in a formatted way"""
@@ -580,12 +643,12 @@ class EchoLinkConsole(cmd.Cmd):
                 console.print(json.dumps(result, indent=2))
         else:
             console.print(result)
-    
-    def default(self, line):
-        if line.strip() == 'EOF':
-            return self.do_exit('')
-        console.print(f"[yellow]Unknown command: {line}[/yellow]")
-        console.print("Type 'help' for a list of commands.")
+
+async def console_mode(base_url=None, private_key=None):
+    """Run interactive console with proper async handling"""
+    console_client = AsyncEchoLinkConsole(base_url, private_key)
+    await console_client.setup()
+    await console_client.async_cmdloop()
 
 async def main_async():
     """Main async function for command-line interface"""
@@ -616,17 +679,13 @@ async def main_async():
             console.print("[yellow]No private key provided in arguments or environment[/yellow]")
             private_key = getpass.getpass("Enter private key: ")
     
-    # Create client
+    # If console mode, start interactive console with proper async handling
+    if args.console:
+        await console_mode(args.url, private_key)
+        return
+    
+    # Create client for individual commands
     async with EchoLinkClient(args.url, private_key, not args.noenv) as client:
-        # If console mode, start interactive console
-        if args.console:
-            console_client = EchoLinkConsole(args.url, private_key)
-            await console_client.initialize_client()
-            console_client.cmdloop()
-            return
-        
-        # Otherwise, run specific commands
-        
         # Health check
         if args.health:
             result = await client.get_health()

@@ -293,8 +293,7 @@ class EchoLinkClient:
             "GET", "/api/v1/agent/status", params={"address": agent_address}
         )
         
-        return response if status == 200 else {"error": response.get("error", "Failed to check 
-agent status")}
+        return response if status == 200 else {"error": response.get("error", "Failed to check agent status")}
     
     async def get_config(self) -> Dict:
         """

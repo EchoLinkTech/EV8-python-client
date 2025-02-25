@@ -179,8 +179,7 @@ class EchoLinkClient:
             Health status information
         """
         status, data = await self._make_request("GET", "/api/v1/health", auth=False)
-        return data if status == 200 else {"error": data.get("error", "Failed to get health 
-status")}
+        return data if status == 200 else {"error": data.get("error", "Failed to get health status")}
     
     async def get_balance(self) -> Dict:
         """

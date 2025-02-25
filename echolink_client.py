@@ -451,8 +451,7 @@ class EchoLinkConsole(cmd.Cmd):
             return
         
         name = arg
-        console.print("[bold]Enter agent purpose (what should this AI agent help 
-with?):[/bold]")
+        console.print("[bold]Enter agent purpose (what should this AI agent help with?):[/bold]")
         console.print("[dim]Press Ctrl+D (or Ctrl+Z on Windows) when finished[/dim]")
         
         lines = []

@@ -334,8 +334,7 @@ class EchoLinkClient:
                     return response
                 
                 # Wait before retrying
-                status.update(f"[bold yellow]Waiting for transaction: {time.time() - 
-start_time:.1f}s elapsed[/bold yellow]")
+                status.update(f"[bold yellow]Waiting for transaction: {time.time() - start_time:.1f}s elapsed[/bold yellow]")
                 await asyncio.sleep(5)
             
             # Timeout

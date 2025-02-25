@@ -613,8 +613,7 @@ async def main_async():
         if os.environ.get('PRIVATE_KEY'):
             private_key = os.environ.get('PRIVATE_KEY')
         else:
-            console.print("[yellow]No private key provided in arguments or 
-environment[/yellow]")
+            console.print("[yellow]No private key provided in arguments or environment[/yellow]")
             private_key = getpass.getpass("Enter private key: ")
     
     # Create client

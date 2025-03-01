@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-EchoLink API Client
+EV8 AI Agent Framework API Client
 
-A Python interface to interact with the EchoLink API service powered by app.py.
+A Python interface to interact with the EV8 API service.
 This client provides access to all functionality exposed by the API endpoints.
 """
 
@@ -46,11 +46,11 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 class EchoLinkClient:
-    """Client for interacting with the EchoLink API"""
+    """Client for interacting with the EV8 API"""
     
     def __init__(self, base_url: str = None, private_key: str = None, load_env: bool = True):
         """
-        Initialize the EchoLink API client
+        Initialize the EV8 API client
         
         Args:
             base_url: API base URL (default: http://localhost:5000)
@@ -66,7 +66,7 @@ class EchoLinkClient:
                 logger.warning(f"Environment file not found at {env_path}")
         
         # Set base URL from argument or environment or default
-        self.base_url = base_url or os.environ.get('ECHOLINK_API_URL', 'http://localhost:5000')
+        self.base_url = base_url or os.environ.get('EV8_API_URL', 'http://localhost:5000')
         
         # Set private key from argument or environment
         self.private_key = private_key or os.environ.get('PRIVATE_KEY')
@@ -111,7 +111,7 @@ class EchoLinkClient:
         timestamp = int(time.time())
         
         # Create message to sign
-        message = f"Authenticate to EchoLink AI: {timestamp}"
+        message = f"Authenticate to EV8 AI: {timestamp}"
         
         # Sign message
         signable_message = encode_defunct(text=message)
@@ -378,15 +378,15 @@ class EchoLinkClient:
         logger.info("Conversation history cleared")
 
 class AsyncEchoLinkConsole(cmd.Cmd):
-    """Interactive command console for EchoLink API with asyncio support"""
+    """Interactive command console for EV8 API with asyncio support"""
     
     intro = """
-    Welcome to the EchoLink API Client Console
+    Welcome to the EV8 API Client Console
     =========================================
     Type 'help' or '?' to list commands.
     Type 'exit' or 'quit' to exit.
     """
-    prompt = "EchoLink> "
+    prompt = "EV8> "
     
     def __init__(self, base_url=None, private_key=None):
         """Initialize the console"""

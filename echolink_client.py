@@ -111,7 +111,7 @@ class EchoLinkClient:
         timestamp = int(time.time())
         
         # Create message to sign
-        message = f"Authenticate to EV8 AI: {timestamp}"
+        message = f"Authenticate to EchoLink AI: {timestamp}"
         
         # Sign message
         signable_message = encode_defunct(text=message)
